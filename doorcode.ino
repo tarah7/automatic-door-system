@@ -3,7 +3,11 @@
 #define ECHO 9
 #define LED  11
 
+// SET_THRESHOLD,30 is the command used to update threshold to 30
+
+
 Servo servo;
+int threshold=20;
 
 void setup() {
   pinMode(TRIG, OUTPUT);
@@ -11,6 +15,23 @@ void setup() {
   pinMode(LED, OUTPUT);
   servo.attach(10);
   Serial.begin(9600);
+}
+
+void checkSerial() {
+    if (Serial.available()) {
+
+        String cmd = Serial.readStringUntil('\n');
+        cmd.trim();
+
+        if (cmd.startsWith("SET_THRESHOLD,")) {
+
+            String value = cmd.substring(14);
+            threshold = value.toInt();
+
+            Serial.print("THRESHOLD_UPDATED,");
+            Serial.println(threshold);
+        }
+    }
 }
 
 long getDistance() {
@@ -30,7 +51,8 @@ int state=0;
 int oldstate=0;
 void loop() {
   long distance = getDistance();
-  if (distance > 0 && distance <= 10) {
+  checkSerial();
+  if (distance > 0 && distance <= threshold) {
     servo.write(120);
     state=1;   // door open
     digitalWrite(LED,HIGH);
