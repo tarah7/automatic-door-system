@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doraemon Smart Door Dashboard</title>
+    <!-- Tailwind CSS Engine -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Socket.io Web Client -->
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        .door-container { perspective: 1000px; }
+        .door-leaf { transform-origin: left; transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+        .door-leaf.open { transform: rotateY(-130deg); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-sky-400 via-sky-200 to-white min-h-screen p-4 md:p-8 relative overflow-x-hidden font-sans">
+
+    <!-- Floating Cloud Graphics background elements -->
+    <div class="absolute inset-0 pointer-events-none overflow-hidden select-none opacity-40">
+        <div class="absolute bg-white rounded-full w-96 h-24 blur-sm top-12 -left-20 animate-pulse"></div>
+        <div class="absolute bg-white rounded-full w-64 h-16 blur-sm top-1/2 -right-10 animate-bounce"></div>
+    </div>
+
+    <div class="max-w-5xl mx-auto space-y-6 relative z-10">
+        
+        <!-- Header Section -->
+        <header class="bg-white/40 backdrop-blur-md rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-xl border border-white/60">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 bg-sky-500 rounded-full flex items-center justify-center text-2xl shadow-md border-2 border-white">🐱</div>
+                <div>
+                    <h1 class="text-xl font-black text-sky-950 tracking-tight">Doraemon Smart Door Center</h1>
+                    <p class="text-xs font-bold text-sky-800/80 uppercase">22nd Century Security Portal UI</p>
+                </div>
+            </div>
+            <div id="status-badge" class="px-4 py-1.5 rounded-full text-xs font-black bg-rose-100 text-rose-700 border border-rose-300 shadow-inner">
+                🔴 Disconnected
+            </div>
+        </header>
+
+        <!-- Main Workspace Blocks -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+            
+            <!-- Left Side: Visual Anywhere Door Card -->
+            <div class="md:col-span-7 bg-white/30 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white/50 flex flex-col items-center justify-center min-h-[400px]">
+                <h3 id="door-status-text" class="text-lg font-black text-sky-950 uppercase tracking-wider mb-6">Door Closed 🔒</h3>
+                
+                <!-- Anywhere Door Simulation Frame -->
+                <div class="door-container relative w-44 h-64 border-8 border-pink-500 bg-slate-900 rounded-lg shadow-2xl overflow-visible">
+                    <!-- Cosmic background space visible inside door frame -->
+                    <div class="absolute inset-0 bg-gradient-to-tr from-indigo-950 via-purple-900 to-indigo-900 flex flex-col items-center justify-center text-[10px] text-cyan-300 font-mono tracking-widest text-center p-2">
+                        <span>🚀 TIMESPACE</span>
+                        <div class="w-2 h-2 bg-cyan-400 rounded-full animate-ping mt-2"></div>
+                    </div>
+                    
+                    <!-- Movable Door leaf panel -->
+                    <div id="door-leaf" class="door-leaf absolute inset-0 bg-pink-500 border-l-4 border-pink-600 flex items-center justify-end pr-2 z-10 shadow-lg">
+                        <!-- Brass handle knob -->
+                        <div class="w-4 h-4 bg-amber-400 rounded-full border-2 border-amber-600 shadow-md"></div>
+                    </div>
+                </div>
+                <div class="text-4xl mt-6 filter drop-shadow-md">🤖</div>
+            </div>
+
+            <!-- Right Side: Metrics and Control Panels -->
+            <div class="md:col-span-5 space-y-6">
+                <!-- Sonar Distance Output Tracking Monitor Widget -->
+                <div class="bg-white/30 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white/50">
+                    <h3 class="text-xs font-black text-sky-900 uppercase tracking-wider">HC-SR04 Proximity Stream</h3>
+                    <div class="text-5xl font-black text-sky-950 mt-3 tracking-tight"><span id="live-distance">--</span> <span class="text-xl font-normal">cm</span></div>
+                    <div class="w-full bg-sky-950/10 h-3 rounded-full mt-4 overflow-hidden shadow-inner">
+                        <div id="distance-bar" class="bg-sky-500 h-full w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+
+                <!-- Range Configuration System Slider Element -->
+                <div class="bg-white/30 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-white/50">
+                    <h3 class="text-xs font-black text-sky-900 uppercase tracking-wider">Trigger Proximity Bounds</h3>
+                    <div class="flex items-center gap-4 mt-4">
+                        <input type="range" id="threshold-slider" min="5" max="400" value="200" class="w-full accent-sky-600 cursor-pointer">
+                        <span id="threshold-display" class="font-bold text-sky-950 text-sm whitespace-nowrap bg-white/80 px-2 py-1 rounded-md border">200 cm</span>
+                    </div>
+                    <button id="commit-btn" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-black py-2.5 rounded-xl text-xs mt-4 shadow-md transition-all active:scale-95 uppercase tracking-wider">
+                        Update Hardware Boundary
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Infrastructure Execution Base Hub Panel -->
+        <div class="bg-white/30 backdrop-blur-md rounded-3xl p-4 shadow-xl border border-white/50 flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div class="flex flex-col w-full sm:w-64">
+                <label class="text-[10px] font-black text-sky-900 uppercase mb-1 tracking-wider">Arduino USB COM Port</label>
+                <input type="text" id="com-port" value="COM5" class="bg-white/80 px-3 py-2 rounded-xl border border-sky-200 text-sm font-bold text-sky-950 focus:outline-none focus:ring-2 focus:ring-sky-400">
+            </div>
+            <button id="connect-btn" class="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white font-black px-8 py-3 rounded-xl text-xs shadow-md transition-all active:scale-95 uppercase tracking-wider">
+                Establish Session Hub
+            </button>
+        </div>
+    </div>
+
+    <!-- Interface Script Logic -->
+    <script>
+        const socket = io();
+        
+        const connectBtn = document.getElementById('connect-btn');
+        const comPortInput = document.getElementById('com-port');
+        const statusBadge = document.getElementById('status-badge');
+        const doorLeaf = document.getElementById('door-leaf');
+        const doorStatusText = document.getElementById('door-status-text');
+        const liveDistance = document.getElementById('live-distance');
+        const distanceBar = document.getElementById('distance-bar');
+        const slider = document.getElementById('threshold-slider');
+        const sliderDisplay = document.getElementById('threshold-display');
+        const commitBtn = document.getElementById('commit-btn');
+
+        // Track range slider adjustments visually
+        slider.oninput = () => sliderDisplay.innerText = `${slider.value} cm`;
+
+        // Request serial hardware pipe setup alignment hook triggers
+        connectBtn.onclick = () => {
+            socket.emit('connect-hardware', { comPort: comPortInput.value });
+        };
+
+        // Fire configuration parameter adjustments down data line
+        commitBtn.onclick = () => {
+            socket.emit('update-threshold', slider.value);
+            alert(`Threshold configuration committed to memory: ${slider.value}cm! ✨`);
+        };
+
+        // UI reaction maps tracking status stream packets incoming
+        socket.on('status', (data) => {
+            if(data.connected) {
+                statusBadge.className = "px-4 py-1.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-700 border border-emerald-300 shadow-inner animate-pulse";
+                statusBadge.innerText = "🟢 System Live & Synced";
+            }
+        });
+
+        socket.on('arduino-data', (data) => {
+            // Door actions
+            if(data.includes('Door Opened')) {
+                doorLeaf.classList.add('open');
+                doorStatusText.className = "text-lg font-black text-emerald-600 uppercase tracking-wider mb-6 animate-pulse";
+                doorStatusText.innerText = "Door Open 🚪✨";
+            } else if(data.includes('Door Closed')) {
+                doorLeaf.classList.remove('open');
+                doorStatusText.className = "text-lg font-black text-sky-950 uppercase tracking-wider mb-6";
+                doorStatusText.innerText = "Door Closed 🔒";
+            }
+
+            // Raw measurements regex extraction patterns mapping loops
+            const distancePatternMatch = data.match(/Distance:\s*(\d+)/);
+            if(distancePatternMatch) {
+                const numericCmValue = distancePatternMatch[1];
+                liveDistance.innerText = numericCmValue;
+                
+                let scalePercentage = Math.min((parseInt(numericCmValue) / 400) * 100, 100);
+                distanceBar.style.width = `${scalePercentage}%`;
+            }
+        });
+    </script>
+</body>
+</html>
