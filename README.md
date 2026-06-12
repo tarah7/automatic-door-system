@@ -105,7 +105,7 @@ Arduino Serial Output
 |---|---|
 | VCC | 5V |
 | GND | GND |
-| Signal | PWM Pin |
+| Signal | Digital Pin |
 
 ### LED
 
